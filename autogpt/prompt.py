@@ -41,6 +41,7 @@ def get_prompt() -> str:
 
     # Define the command list
     commands = [
+        ("Amazon Products Search", "amazon_search", {"url": "<url>", "question": "<what_you_want_to_find_on_amazon>"}),
         ("Google Search", "google", {"input": "<search>"}),
         (
             "Browse Website",
