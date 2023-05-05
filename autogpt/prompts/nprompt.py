@@ -1,6 +1,6 @@
 from colorama import Fore
 
-from autogpt.config.ai_config import AIConfig
+from autogpt.config.nai_config import AIConfig
 from autogpt.config.config import Config
 from autogpt.llm import ApiManager
 from autogpt.logs import logger
