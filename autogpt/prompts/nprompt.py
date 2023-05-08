@@ -4,7 +4,7 @@ from autogpt.config.nai_config import AIConfig
 from autogpt.config.config import Config
 from autogpt.llm import ApiManager
 from autogpt.logs import logger
-from autogpt.prompts.generator import PromptGenerator
+from autogpt.prompts.ngenerator import PromptGenerator
 from autogpt.setup import prompt_user
 from autogpt.utils import clean_input
 
@@ -36,9 +36,19 @@ def build_default_prompt_generator() -> PromptGenerator:
         "If you are unsure how you previously did something or want to recall past"
         " events, thinking about similar events will help you remember."
     )
-    prompt_generator.add_constraint("No user assistance")
     prompt_generator.add_constraint(
-        'Exclusively use the commands listed in double quotes e.g. "command name"'
+        "If the user do not need help with another task, say good bye by telling that"
+        " you will be ready and happy to help next time."
+    )
+    prompt_generator.add_constraint(
+        "If you think that some information is missing to complete a task, ask the"
+        " user as soon as you notice this."
+    )
+    prompt_generator.add_constraint(
+        "No user assistance after having all the information to complete the task."
+    )
+    prompt_generator.add_constraint(
+        'Exclusively use the commands listed in double quotes e.g. "command name".'
     )
 
     # Define the command list
@@ -55,9 +65,6 @@ def build_default_prompt_generator() -> PromptGenerator:
         "Internet access for searches and information gathering."
     )
     prompt_generator.add_resource("Long Term memory management.")
-    prompt_generator.add_resource(
-        "GPT-3.5 powered Agents for delegation of simple tasks."
-    )
     prompt_generator.add_resource("File output.")
 
     # Add performance evaluations to the PromptGenerator object
@@ -75,7 +82,6 @@ def build_default_prompt_generator() -> PromptGenerator:
         "Every command has a cost, so be smart and efficient. Aim to complete tasks in"
         " the least number of steps."
     )
-    prompt_generator.add_performance_evaluation("Write all code to a file.")
     return prompt_generator
 
 
@@ -86,31 +92,5 @@ def construct_main_ai_config() -> AIConfig:
         str: The prompt string
     """
     config = AIConfig.load(CFG.ai_settings_file)
-
-    if not config.ai_name:
-        config = prompt_user()
-        config.save(CFG.ai_settings_file)
-
-    # set the total api budget
-    api_manager = ApiManager()
-    api_manager.set_total_budget(config.api_budget)
-
-    # Agent Created, print message
-    logger.typewriter_log(
-        config.ai_name,
-        Fore.LIGHTBLUE_EX,
-        "has been created with the following details:",
-        speak_text=True,
-    )
-
-    # Print the ai config details
-    # Name
-    logger.typewriter_log("Name:", Fore.GREEN, config.ai_name, speak_text=False)
-    # Role
-    logger.typewriter_log("Role:", Fore.GREEN, config.ai_role, speak_text=False)
-    # Goals
-    logger.typewriter_log("Goals:", Fore.GREEN, "", speak_text=False)
-    for goal in config.ai_goals:
-        logger.typewriter_log("-", Fore.GREEN, goal, speak_text=False)
 
     return config

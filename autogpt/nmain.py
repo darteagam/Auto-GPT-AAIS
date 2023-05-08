@@ -134,7 +134,9 @@ def run_auto_gpt(
     ai_name = ""
     ai_config = construct_main_ai_config()
     ai_config.command_registry = command_registry
-    # print(prompt)
+    for v in ai_config.command_registry.commands.values():
+        print('Name: ', v.name)
+        print('Enabled: ', v.enabled)
     # Initialize variables
     full_message_history = []
     next_action_count = 0
@@ -154,18 +156,19 @@ def run_auto_gpt(
     )
     logger.typewriter_log("Using Browser:", Fore.GREEN, cfg.selenium_web_browser)
     system_prompt = ai_config.construct_full_prompt()
+    print(system_prompt)
     if cfg.debug_mode:
         logger.typewriter_log("Prompt:", Fore.GREEN, system_prompt)
 
-    agent = Agent(
-        ai_name=ai_name,
-        memory=memory,
-        full_message_history=full_message_history,
-        next_action_count=next_action_count,
-        command_registry=command_registry,
-        config=ai_config,
-        system_prompt=system_prompt,
-        triggering_prompt=DEFAULT_TRIGGERING_PROMPT,
-        workspace_directory=workspace_directory,
-    )
-    agent.start_interaction_loop()
+    # agent = Agent(
+    #     ai_name=ai_name,
+    #     memory=memory,
+    #     full_message_history=full_message_history,
+    #     next_action_count=next_action_count,
+    #     command_registry=command_registry,
+    #     config=ai_config,
+    #     system_prompt=system_prompt,
+    #     triggering_prompt=DEFAULT_TRIGGERING_PROMPT,
+    #     workspace_directory=workspace_directory,
+    # )
+    # agent.start_interaction_loop()

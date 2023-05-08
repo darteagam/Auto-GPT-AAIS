@@ -12,7 +12,7 @@ from typing import Any, Optional, Type
 import distro
 import yaml
 
-from autogpt.prompts.generator import PromptGenerator
+from autogpt.prompts.ngenerator import PromptGenerator
 
 # Soon this will go in a folder where it remembers more stuff about the run(s)
 SAVE_FILE = str(Path(os.getcwd()) / "ai_settings.yaml")
@@ -125,7 +125,7 @@ class AIConfig:
         )
 
         from autogpt.config import Config
-        from autogpt.prompts.prompt import build_default_prompt_generator
+        from autogpt.prompts.nprompt import build_default_prompt_generator
 
         cfg = Config()
         if prompt_generator is None:
@@ -154,8 +154,6 @@ class AIConfig:
         full_prompt = f"You are {prompt_generator.name}, {prompt_generator.role}\n{prompt_start}\n\nGOALS:\n\n"
         for i, goal in enumerate(self.ai_goals):
             full_prompt += f"{i+1}. {goal}\n"
-        if self.api_budget > 0.0:
-            full_prompt += f"\nIt takes money to let you run. Your API budget is ${self.api_budget:.3f}"
         self.prompt_generator = prompt_generator
         full_prompt += f"\n\n{prompt_generator.generate_prompt_string()}"
         return full_prompt
