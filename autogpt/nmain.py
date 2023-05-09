@@ -7,7 +7,7 @@ from colorama import Fore, Style
 
 from autogpt.agent.agent import Agent
 from autogpt.commands.command import CommandRegistry
-from autogpt.config import Config, check_openai_api_key
+from autogpt.config.nconfig import Config, check_openai_api_key
 from autogpt.configurator import create_config
 from autogpt.logs import logger
 from autogpt.memory import get_memory
@@ -121,7 +121,7 @@ def run_auto_gpt(
     # command_registry.import_commands("autogpt.commands.analyze_code")
     # command_registry.import_commands("autogpt.commands.audio_text")
     # command_registry.import_commands("autogpt.commands.execute_code")
-    command_registry.import_commands("autogpt.commands.file_operations")
+    command_registry.import_commands("autogpt.commands.nfile_operations")
     # command_registry.import_commands("autogpt.commands.git_operations")
     command_registry.import_commands("autogpt.commands.google_search")
     command_registry.import_commands("autogpt.commands.image_gen")
@@ -137,6 +137,7 @@ def run_auto_gpt(
     for v in ai_config.command_registry.commands.values():
         print('Name: ', v.name)
         print('Enabled: ', v.enabled)
+    print(cfg.google_api_key)
     # Initialize variables
     full_message_history = []
     next_action_count = 0
