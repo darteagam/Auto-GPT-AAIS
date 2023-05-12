@@ -18,6 +18,9 @@ from selenium.webdriver.support.wait import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.firefox import GeckoDriverManager
 
+import openai
+from openai.error import APIError, RateLimitError, Timeout
+
 import autogpt.processing.text as summary
 from autogpt.commands.command import command
 from autogpt.config.nconfig import Config
@@ -35,15 +38,65 @@ CFG = Config()
 )
 def youtube_search(search_description: str) -> list[str]:
     """Browse YouTube and return a list with two links:
-        - link of the first video (according to a set of filters)
+        - link of the first video result (according to a set of filters)
         - link of search result
 
     Args:
         search_description (str): The description of the YouTube search given by the user
 
     Returns:
-        List[str, WebDriver]: The answer and links to the user and the webdriver
+        List[str]: The list with the link of the first video result and the link of search result
     """
+    num_retries = 10
+    warned_user = False
+    print('Creating completion model')
+    response = None
+    for attempt in range(num_retries):
+        backoff = 2 ** (attempt + 2)
+        try:
+            response = openai.Completion.create(
+                model="text-davinci-003",
+                prompt="Extract the topic of the search, the publishing date and duration of the video, "
+                       "as well as the result sorting criteria from this text: " + search_description + 
+                       "Topic: ",
+                temperature=CFG.temperature,
+                max_tokens=100,
+                api_key=CFG.openai_api_key,
+            )
+            print('Response: ', response)
+            print('prompt_tokens: ', response.usage.prompt_tokens)
+            print('completion_tokens: ', response.usage.completion_tokens)
+            break
+        except RateLimitError:
+            print('Error: Reached rate limit')
+            if not warned_user:
+                print('Please double check that you have setup a {Fore.CYAN + Style.BRIGHT}PAID{Style.RESET_ALL} OpenAI API Account. "
+                    + f"You can read more here: {Fore.CYAN}https://docs.agpt.co/setup/#getting-an-api-key{Fore.RESET}"
+                )
+                warned_user = True
+        except (APIError, Timeout) as e:
+            if e.http_status != 502:
+                raise
+            if attempt == num_retries - 1:
+                raise
+        logger.debug(
+            f"{Fore.RED}Error: ",
+            f"API Bad gateway. Waiting {backoff} seconds...{Fore.RESET}",
+        )
+        time.sleep(backoff)
+    if response is None:
+        logger.typewriter_log(
+            "FAILED TO GET RESPONSE FROM OPENAI",
+            Fore.RED,
+            "Auto-GPT has failed to get a response from OpenAI's services. "
+            + f"Try running Auto-GPT again, and if the problem the persists try running it with `{Fore.CYAN}--debug{Fore.RESET}`.",
+        )
+        logger.double_check()
+        if cfg.debug_mode:
+            raise RuntimeError(f"Failed to get response after {num_retries} retries")
+        else:
+            quit(1)
+    resp = response.choices[0].message["content"]
     try:
         driver, text = scrape_text_with_selenium(url)
     except WebDriverException as e:
