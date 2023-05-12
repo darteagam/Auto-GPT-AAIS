@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from pathlib import Path
 from sys import platform
 
@@ -36,7 +37,7 @@ CFG = Config()
     "YouTube Search",
     '"search_description": "<description_of_YouTube_search>"',
 )
-def youtube_search(search_description: str) -> list[str]:
+def youtube_search(search_description: str) -> str:#list[str]
     """Browse YouTube and return a list with two links:
         - link of the first video result (according to a set of filters)
         - link of search result
@@ -56,12 +57,13 @@ def youtube_search(search_description: str) -> list[str]:
         try:
             response = openai.Completion.create(
                 model="text-davinci-003",
-                prompt="Extract the topic of the search, the publishing date and duration of the video, "
-                       "as well as the result sorting criteria from this text: " + search_description + 
-                       "Topic: ",
+                prompt='Extract the topic of the search, the publishing date and duration of the video, '
+                       'as well as the result sorting criteria from this text. Show the information as a'
+                       ' Python dictionary with the keys "topic", "date", "duration" and "criteria". For'
+                       ' missing values use "None":\n\n' + search_description + '\n\n{"topic":}:',
                 temperature=CFG.temperature,
                 max_tokens=100,
-                api_key=CFG.openai_api_key,
+                # api_key=CFG.openai_api_key,
             )
             print('Response: ', response)
             print('prompt_tokens: ', response.usage.prompt_tokens)
@@ -70,33 +72,30 @@ def youtube_search(search_description: str) -> list[str]:
         except RateLimitError:
             print('Error: Reached rate limit')
             if not warned_user:
-                print('Please double check that you have setup a {Fore.CYAN + Style.BRIGHT}PAID{Style.RESET_ALL} OpenAI API Account. "
-                    + f"You can read more here: {Fore.CYAN}https://docs.agpt.co/setup/#getting-an-api-key{Fore.RESET}"
-                )
+                print(
+                      'Please double check that you have setup a PAID OpenAI API Account. '
+                      'You can read more here: https://docs.agpt.co/setup/#getting-an-api-key'
+                     )
                 warned_user = True
         except (APIError, Timeout) as e:
             if e.http_status != 502:
                 raise
             if attempt == num_retries - 1:
                 raise
-        logger.debug(
-            f"{Fore.RED}Error: ",
-            f"API Bad gateway. Waiting {backoff} seconds...{Fore.RESET}",
-        )
+        print('Error: API Bad gateway. Waiting ' + backoff + ' seconds...')
         time.sleep(backoff)
     if response is None:
-        logger.typewriter_log(
-            "FAILED TO GET RESPONSE FROM OPENAI",
-            Fore.RED,
-            "Auto-GPT has failed to get a response from OpenAI's services. "
-            + f"Try running Auto-GPT again, and if the problem the persists try running it with `{Fore.CYAN}--debug{Fore.RESET}`.",
-        )
-        logger.double_check()
-        if cfg.debug_mode:
+        print(
+              "FAILED TO GET RESPONSE FROM OPENAI, Auto-GPT has failed to get a response from OpenAI's services. "
+              "Try running Auto-GPT again, and if the problem the persists try running it with `--debug`."
+             )
+        if CFG.debug_mode:
             raise RuntimeError(f"Failed to get response after {num_retries} retries")
         else:
             quit(1)
-    resp = response.choices[0].message["content"]
+    resp = '{"topic":' + response.choices[0].text
+    print(resp)
+    search_params = resp
     try:
         driver, text = scrape_text_with_selenium(url)
     except WebDriverException as e:
@@ -113,7 +112,7 @@ def youtube_search(search_description: str) -> list[str]:
     if len(links) > 5:
         links = links[:5]
     close_browser(driver)
-    return f"Answer gathered from website: {summary_text} \n \n Links: {links}", driver
+    return resp
 
 
 def scrape_text_with_selenium(url: str) -> tuple[WebDriver, str]:
@@ -234,3 +233,7 @@ def add_header(driver: WebDriver) -> None:
         driver.execute_script(overlay_script)
     except Exception as e:
         print(f"Error executing overlay.js: {e}")
+
+
+if __name__ == "__main__":
+    r = youtube_search('Play the first dota 2 video of less than 5 minutes length sorted by views')
