@@ -231,7 +231,7 @@ def extract_youtube_search_params(search_description: str) -> dict[str, str]:
                 model="text-davinci-003",
                 prompt='Extract the topic of the search, the publishing date and duration of the video, '
                        'as well as the result sorting criteria from this text. Show the information as a'
-                       ' Python dictionary with the keys "topic", "date", "duration" and "criteria". For'
+                       ' Python dictionary with the keys "topic", "date", "duration" and "criterion". For'
                        ' missing values use "None":\n\n' + search_description + '\n\n{"topic":}:',
                 temperature=CFG.temperature,
                 max_tokens=100,
@@ -336,18 +336,72 @@ def get_youtube_video_with_selenium(search_params: dict[str, str]) -> str:
     filterButton.click()
 
     # Select the upload date filter
-                                        '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-search/div[1]/ytd-two-column-search-results-renderer/div/ytd-section-list-renderer/div[1]/div[2]/ytd-search-sub-menu-renderer/div/iron-collapse/div/ytd-search-filter-group-renderer[1]/ytd-search-filter-renderer[1]/a/div/yt-formatted-string'
-    f11 = driver.find_element(By.XPATH, '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-search/div[1]/ytd-two-column-search-results-renderer/div/ytd-section-list-renderer/div[1]/div[2]/ytd-search-sub-menu-renderer/div/iron-collapse/div/ytd-search-filter-group-renderer[1]/ytd-search-filter-renderer[2]/a/div/yt-formatted-string')
-    # f11 = driver.find_element(By.CSS_SELECTOR, "ytd-search-filter-group-renderer.style-scope:nth-child(1) > ytd-search-filter-renderer:nth-child(2) > a:nth-child(1)")
-    f11.click()
-
+    print(type(driver))
+    apply_youtube_filters(search_params, driver)
+    
     WebDriverWait(driver, 10).until(EC.visibility_of_all_elements_located)
     # WebDriverWait(driver, 10).until(EC.presence_of_all_elements_located((By.ID, 'thumbnail')))
     url = driver.current_url
     print(url)
     video = driver.find_element(By.XPATH, '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-search/div[1]/ytd-two-column-search-results-renderer/div/ytd-section-list-renderer/div[2]/ytd-item-section-renderer/div[3]/ytd-video-renderer[1]/div[1]/div/div[1]/div/h3/a')
     print(video.get_attribute('href'))
-    return driver, text
+    return driver
+
+
+def apply_youtube_filters(search_params: dict[str, str], driver: WebDriver) -> None:
+    """Apply filters to YouTube search using selenium
+
+    Args:
+        search_params (dict[str, str]): The search parameters in dictionary format (param_name: param_value)
+        driver (WebDriver): The webdriver to use to scrape the links
+    """
+    # Select the upload date filter
+    if 'date' in search_params.keys():
+        if search_params['date'] == 'last hour':
+            f = driver.find_element(By.XPATH, '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-search/div[1]/ytd-two-column-search-results-renderer/div/ytd-section-list-renderer/div[1]/div[2]/ytd-search-sub-menu-renderer/div/iron-collapse/div/ytd-search-filter-group-renderer[1]/ytd-search-filter-renderer[1]/a/div/yt-formatted-string')
+            f.click()
+        elif search_params['date'] == 'today':
+            f = driver.find_element(By.XPATH, '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-search/div[1]/ytd-two-column-search-results-renderer/div/ytd-section-list-renderer/div[1]/div[2]/ytd-search-sub-menu-renderer/div/iron-collapse/div/ytd-search-filter-group-renderer[1]/ytd-search-filter-renderer[2]/a/div/yt-formatted-string')
+            f.click()
+        elif search_params['date'] == 'this week':
+            f = driver.find_element(By.XPATH, '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-search/div[1]/ytd-two-column-search-results-renderer/div/ytd-section-list-renderer/div[1]/div[2]/ytd-search-sub-menu-renderer/div/iron-collapse/div/ytd-search-filter-group-renderer[1]/ytd-search-filter-renderer[3]/a/div/yt-formatted-string')
+            f.click()
+        elif search_params['date'] == 'this month':
+            f = driver.find_element(By.XPATH, '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-search/div[1]/ytd-two-column-search-results-renderer/div/ytd-section-list-renderer/div[1]/div[2]/ytd-search-sub-menu-renderer/div/iron-collapse/div/ytd-search-filter-group-renderer[1]/ytd-search-filter-renderer[4]/a/div/yt-formatted-string')
+            f.click()
+        elif search_params['date'] == 'this year':
+            f = driver.find_element(By.XPATH, '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-search/div[1]/ytd-two-column-search-results-renderer/div/ytd-section-list-renderer/div[1]/div[2]/ytd-search-sub-menu-renderer/div/iron-collapse/div/ytd-search-filter-group-renderer[1]/ytd-search-filter-renderer[5]/a/div/yt-formatted-string')
+            f.click()
+
+    # Select the duration filter
+    if 'duration' in search_params.keys():
+        if search_params['duration'] == 'less than 4 minutes':
+            f = driver.find_element(By.XPATH, '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-search/div[1]/ytd-two-column-search-results-renderer/div/ytd-section-list-renderer/div[1]/div[2]/ytd-search-sub-menu-renderer/div/iron-collapse/div/ytd-search-filter-group-renderer[3]/ytd-search-filter-renderer[1]/a/div/yt-formatted-string')
+            f.click()
+        elif search_params['duration'] == 'from 4 to 20 minutes':
+            f = driver.find_element(By.XPATH, '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-search/div[1]/ytd-two-column-search-results-renderer/div/ytd-section-list-renderer/div[1]/div[2]/ytd-search-sub-menu-renderer/div/iron-collapse/div/ytd-search-filter-group-renderer[3]/ytd-search-filter-renderer[2]/a/div/yt-formatted-string')
+            f.click()
+        elif search_params['duration'] == 'more than 20 minutes':
+            f = driver.find_element(By.XPATH, '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-search/div[1]/ytd-two-column-search-results-renderer/div/ytd-section-list-renderer/div[1]/div[2]/ytd-search-sub-menu-renderer/div/iron-collapse/div/ytd-search-filter-group-renderer[3]/ytd-search-filter-renderer[3]/a/div/yt-formatted-string')
+            f.click()
+    
+    # Select the sort criterion (sorted by) filter
+    if 'criterion' in search_params.keys():
+        if search_params['criterion'] == 'relevance':
+            f = driver.find_element(By.XPATH, '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-search/div[1]/ytd-two-column-search-results-renderer/div/ytd-section-list-renderer/div[1]/div[2]/ytd-search-sub-menu-renderer/div/iron-collapse/div/ytd-search-filter-group-renderer[5]/ytd-search-filter-renderer[1]/a/div/yt-formatted-string')
+            f.click()
+        elif search_params['criterion'] == 'upload date':
+            f = driver.find_element(By.XPATH, '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-search/div[1]/ytd-two-column-search-results-renderer/div/ytd-section-list-renderer/div[1]/div[2]/ytd-search-sub-menu-renderer/div/iron-collapse/div/ytd-search-filter-group-renderer[5]/ytd-search-filter-renderer[2]/a/div/yt-formatted-string')
+            f.click()
+        elif search_params['criterion'] == 'views':
+            f = driver.find_element(By.XPATH, '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-search/div[1]/ytd-two-column-search-results-renderer/div/ytd-section-list-renderer/div[1]/div[2]/ytd-search-sub-menu-renderer/div/iron-collapse/div/ytd-search-filter-group-renderer[5]/ytd-search-filter-renderer[3]/a/div/yt-formatted-string')
+            f.click()
+        elif search_params['criterion'] == 'rating':
+            f = driver.find_element(By.XPATH, '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-search/div[1]/ytd-two-column-search-results-renderer/div/ytd-section-list-renderer/div[1]/div[2]/ytd-search-sub-menu-renderer/div/iron-collapse/div/ytd-search-filter-group-renderer[5]/ytd-search-filter-renderer[4]/a/div/yt-formatted-string')
+            f.click()
+
+    # Wait until filters have been applied
+    WebDriverWait(driver, 10).until(EC.visibility_of_all_elements_located)
 
 
 def scrape_text_with_selenium(url: str) -> tuple[WebDriver, str]:
