@@ -5,7 +5,7 @@ from pathlib import Path
 
 from colorama import Fore, Style
 
-from autogpt.agent.agent import Agent
+from autogpt.agent.nagent import Agent
 from autogpt.commands.command import CommandRegistry
 from autogpt.config.nconfig import Config, check_openai_api_key
 from autogpt.configurator import create_config
@@ -118,6 +118,7 @@ def run_auto_gpt(
     cfg.set_plugins(scan_plugins(cfg, cfg.debug_mode))
     # Create a CommandRegistry instance and scan default folder
     command_registry = CommandRegistry()
+    command_registry.import_commands("autogpt.commands.youtube_selenium")
     # command_registry.import_commands("autogpt.commands.analyze_code")
     # command_registry.import_commands("autogpt.commands.audio_text")
     # command_registry.import_commands("autogpt.commands.execute_code")
@@ -131,13 +132,13 @@ def run_auto_gpt(
     # command_registry.import_commands("autogpt.commands.write_tests")
     command_registry.import_commands("autogpt.app")
 
-    ai_name = ""
     ai_config = construct_main_ai_config()
+    ai_name = ai_config.ai_name
     ai_config.command_registry = command_registry
-    for v in ai_config.command_registry.commands.values():
-        print('Name: ', v.name)
-        print('Enabled: ', v.enabled)
-    print(cfg.google_api_key)
+    # for v in ai_config.command_registry.commands.values():
+    #     print('Name: ', v.name)
+    #     print('Enabled: ', v.enabled)
+    # print(cfg.google_api_key)
     # Initialize variables
     full_message_history = []
     next_action_count = 0
@@ -157,19 +158,19 @@ def run_auto_gpt(
     )
     logger.typewriter_log("Using Browser:", Fore.GREEN, cfg.selenium_web_browser)
     system_prompt = ai_config.construct_full_prompt()
-    print(system_prompt)
+    print(system_prompt + '\n\n')
     if cfg.debug_mode:
         logger.typewriter_log("Prompt:", Fore.GREEN, system_prompt)
 
-    # agent = Agent(
-    #     ai_name=ai_name,
-    #     memory=memory,
-    #     full_message_history=full_message_history,
-    #     next_action_count=next_action_count,
-    #     command_registry=command_registry,
-    #     config=ai_config,
-    #     system_prompt=system_prompt,
-    #     triggering_prompt=DEFAULT_TRIGGERING_PROMPT,
-    #     workspace_directory=workspace_directory,
-    # )
-    # agent.start_interaction_loop()
+    agent = Agent(
+        ai_name=ai_name,
+        memory=memory,
+        full_message_history=full_message_history,
+        next_action_count=next_action_count,
+        command_registry=command_registry,
+        config=ai_config,
+        system_prompt=system_prompt,
+        triggering_prompt=DEFAULT_TRIGGERING_PROMPT,
+        workspace_directory=workspace_directory,
+    )
+    agent.start_interaction_loop()

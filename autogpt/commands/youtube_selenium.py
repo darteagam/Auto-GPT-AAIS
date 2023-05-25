@@ -1,12 +1,12 @@
-"""Selenium web scraping module."""
+"""YouTube search module."""
 from __future__ import annotations
 
-import logging
+# import logging
 import time
 from pathlib import Path
 from sys import platform
 
-from bs4 import BeautifulSoup
+# from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.chrome.options import Options as ChromeOptions
@@ -22,10 +22,10 @@ from webdriver_manager.firefox import GeckoDriverManager
 import openai
 from openai.error import APIError, RateLimitError, Timeout
 
-import autogpt.processing.text as summary
+# import autogpt.processing.text as summary
 from autogpt.commands.command import command
 from autogpt.config.nconfig import Config
-from autogpt.processing.html import extract_hyperlinks, format_hyperlinks
+# from autogpt.processing.html import extract_hyperlinks, format_hyperlinks
 from autogpt.url_utils.validators import validate_url
 
 FILE_DIR = Path(__file__).parent.parent
@@ -37,7 +37,8 @@ CFG = Config()
     "YouTube Search",
     '"search_description": "<description_of_YouTube_search>"',
 )
-def youtube_search(search_description: str) -> str:#list[str]
+@validate_url
+def youtube_search(search_description: str) -> list[str]:
     """Browse YouTube and return a list with two links:
         - link of the first video result (according to a set of filters)
         - link of search result
@@ -46,169 +47,93 @@ def youtube_search(search_description: str) -> str:#list[str]
         search_description (str): The description of the YouTube search given by the user
 
     Returns:
-        List[str]: The list with the link of the first video result and the link of search result
+        list[str]: The list with the link of the first video result and the link of search result
     """
     search_params = extract_youtube_search_params(search_description)
-    print(search_params['topic'])
-
-    options_available = {
-            "chrome": ChromeOptions,
-            "safari": SafariOptions,
-            "firefox": FirefoxOptions,
-    }
-
-    options = options_available[CFG.selenium_web_browser]()
-    options.add_argument(
-        "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.5615.49 Safari/537.36"
-    )
-
-    if CFG.selenium_web_browser == "firefox":
-        if CFG.selenium_headless:
-            options.headless = True
-            options.add_argument("--disable-gpu")
-        driver = webdriver.Firefox(
-            executable_path=GeckoDriverManager().install(), options=options
-        )
-    elif CFG.selenium_web_browser == "safari":
-        # Requires a bit more setup on the users end
-        # See https://developer.apple.com/documentation/webkit/testing_with_webdriver_in_safari
-        driver = webdriver.Safari(options=options)
-    else:
-        if platform == "linux" or platform == "linux2":
-            options.add_argument("--disable-dev-shm-usage")
-            options.add_argument("--remote-debugging-port=9222")
-
-        options.add_argument("--no-sandbox")
-        if CFG.selenium_headless:
-            # options.add_argument("--headless=new")
-            options.add_argument("--disable-gpu")
-
-        chromium_driver_path = Path("/usr/bin/chromedriver")
-
-        driver = webdriver.Chrome(
-            executable_path=chromium_driver_path
-            if chromium_driver_path.exists()
-            else ChromeDriverManager().install(),
-            options=options,
-        )
-    driver.get('https://www.youtube.com/')
     
-    WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, '/html/body/ytd-app/div[1]/div/ytd-masthead/div[4]/div[2]/ytd-searchbox/form/div[1]/div[1]/input')))
-    searchbox = driver.find_element(By.XPATH, '/html/body/ytd-app/div[1]/div/ytd-masthead/div[4]/div[2]/ytd-searchbox/form/div[1]/div[1]/input')
-    searchbox.send_keys(search_params['topic'])
-    searchButton = driver.find_element(By.XPATH, '/html/body/ytd-app/div[1]/div/ytd-masthead/div[4]/div[2]/ytd-searchbox/button')
-    searchButton.click()
-
-    WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-search/div[1]/ytd-two-column-search-results-renderer/div/ytd-section-list-renderer/div[1]/div[2]/ytd-search-sub-menu-renderer/div/div/ytd-toggle-button-renderer/yt-button-shape/button')))
-    # filterButton = driver.find_element(By.CSS_SELECTOR, "ytd-toggle-button-renderer.ytd-search-sub-menu-renderer")
-    filterButton = driver.find_element(By.XPATH, '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-search/div[1]/ytd-two-column-search-results-renderer/div/ytd-section-list-renderer/div[1]/div[2]/ytd-search-sub-menu-renderer/div/div/ytd-toggle-button-renderer/yt-button-shape/button')
-    filterButton.click()
-    f11 = driver.find_element(By.XPATH, '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-search/div[1]/ytd-two-column-search-results-renderer/div/ytd-section-list-renderer/div[1]/div[2]/ytd-search-sub-menu-renderer/div/iron-collapse/div/ytd-search-filter-group-renderer[1]/ytd-search-filter-renderer[2]/a/div/yt-formatted-string')
-    # f11 = driver.find_element(By.CSS_SELECTOR, "ytd-search-filter-group-renderer.style-scope:nth-child(1) > ytd-search-filter-renderer:nth-child(2) > a:nth-child(1)")
-    f11.click()
-
-    WebDriverWait(driver, 10).until(EC.visibility_of_all_elements_located)
-    # WebDriverWait(driver, 10).until(EC.presence_of_all_elements_located((By.ID, 'thumbnail')))
-    url = driver.current_url
-    print(url)
-    video = driver.find_element(By.XPATH, '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-search/div[1]/ytd-two-column-search-results-renderer/div/ytd-section-list-renderer/div[2]/ytd-item-section-renderer/div[3]/ytd-video-renderer[1]/div[1]/div/div[1]/div/h3/a')
-    print(video.get_attribute('href'))
-    # videos = driver.find_elements(By.ID, 'thumbnail')
-    # for video in videos:
-    #     print(video.get_attribute('href'))
-    # for video in videos:
-    #     # link = video.find_element(By.XPATH, '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-search/div[1]/ytd-two-column-search-results-renderer/div/ytd-section-list-renderer/div[2]/ytd-item-section-renderer/div[3]/ytd-video-renderer[1]/div[1]/div/div[1]/div/h3/a')
-    #     #                                     '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-search/div[1]/ytd-two-column-search-results-renderer/div/ytd-section-list-renderer/div[2]/ytd-item-section-renderer/div[3]/ytd-video-renderer[2]/div[1]/div/div[1]/div/h3/a'
-    #     #                                     '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-search/div[1]/ytd-two-column-search-results-renderer/div/ytd-section-list-renderer/div[2]/ytd-item-section-renderer/div[3]/ytd-video-renderer[1]/div[1]/div/div[1]/div/h3/a'
-    #                                         # '//*[@id="video-title"]'
-    #     link = video.find_element(By.XPATH, './/a[@id="video-title"]')
-    #     print(link.get_attribute('href'))
-    print('done!')
-
-    # try:
-    #     options_available = {
+    # options_available = {
     #         "chrome": ChromeOptions,
     #         "safari": SafariOptions,
     #         "firefox": FirefoxOptions,
-    #     }
+    # }
 
-    #     options = options_available[CFG.selenium_web_browser]()
-    #     options.add_argument(
-    #         "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.5615.49 Safari/537.36"
+    # options = options_available[CFG.selenium_web_browser]()
+    # options.add_argument(
+    #     "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.5615.49 Safari/537.36"
+    # )
+
+    # if CFG.selenium_web_browser == "firefox":
+    #     if CFG.selenium_headless:
+    #         options.headless = True
+    #         options.add_argument("--disable-gpu")
+    #     driver = webdriver.Firefox(
+    #         executable_path=GeckoDriverManager().install(), options=options
     #     )
+    # elif CFG.selenium_web_browser == "safari":
+    #     # Requires a bit more setup on the users end
+    #     # See https://developer.apple.com/documentation/webkit/testing_with_webdriver_in_safari
+    #     driver = webdriver.Safari(options=options)
+    # else:
+    #     if platform == "linux" or platform == "linux2":
+    #         options.add_argument("--disable-dev-shm-usage")
+    #         options.add_argument("--remote-debugging-port=9222")
 
-    #     if CFG.selenium_web_browser == "firefox":
-    #         if CFG.selenium_headless:
-    #             options.headless = True
-    #             options.add_argument("--disable-gpu")
-    #         driver = webdriver.Firefox(
-    #             executable_path=GeckoDriverManager().install(), options=options
-    #         )
-    #     elif CFG.selenium_web_browser == "safari":
-    #         # Requires a bit more setup on the users end
-    #         # See https://developer.apple.com/documentation/webkit/testing_with_webdriver_in_safari
-    #         driver = webdriver.Safari(options=options)
-    #     else:
-    #         if platform == "linux" or platform == "linux2":
-    #             options.add_argument("--disable-dev-shm-usage")
-    #             options.add_argument("--remote-debugging-port=9222")
+    #     options.add_argument("--no-sandbox")
+    #     if CFG.selenium_headless:
+    #         # options.add_argument("--headless=new")
+    #         options.add_argument("--disable-gpu")
 
-    #         options.add_argument("--no-sandbox")
-    #         if CFG.selenium_headless:
-    #             options.add_argument("--headless=new")
-    #             options.add_argument("--disable-gpu")
+    #     chromium_driver_path = Path("/usr/bin/chromedriver")
 
-    #         chromium_driver_path = Path("/usr/bin/chromedriver")
+    #     driver = webdriver.Chrome(
+    #         executable_path=chromium_driver_path
+    #         if chromium_driver_path.exists()
+    #         else ChromeDriverManager().install(),
+    #         options=options,
+    #     )
+    # driver.get('https://www.youtube.com/')
+    
+    # WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, '/html/body/ytd-app/div[1]/div/ytd-masthead/div[4]/div[2]/ytd-searchbox/form/div[1]/div[1]/input')))
+    # searchbox = driver.find_element(By.XPATH, '/html/body/ytd-app/div[1]/div/ytd-masthead/div[4]/div[2]/ytd-searchbox/form/div[1]/div[1]/input')
+    # searchbox.send_keys(search_params['topic'])
+    # searchButton = driver.find_element(By.XPATH, '/html/body/ytd-app/div[1]/div/ytd-masthead/div[4]/div[2]/ytd-searchbox/button')
+    # searchButton.click()
 
-    #         driver = webdriver.Chrome(
-    #             executable_path=chromium_driver_path
-    #             if chromium_driver_path.exists()
-    #             else ChromeDriverManager().install(),
-    #             options=options,
-    #         )
-    #     driver.get('https://www.youtube.com/')
+    # WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-search/div[1]/ytd-two-column-search-results-renderer/div/ytd-section-list-renderer/div[1]/div[2]/ytd-search-sub-menu-renderer/div/div/ytd-toggle-button-renderer/yt-button-shape/button')))
+    # # filterButton = driver.find_element(By.CSS_SELECTOR, "ytd-toggle-button-renderer.ytd-search-sub-menu-renderer")
+    # filterButton = driver.find_element(By.XPATH, '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-search/div[1]/ytd-two-column-search-results-renderer/div/ytd-section-list-renderer/div[1]/div[2]/ytd-search-sub-menu-renderer/div/div/ytd-toggle-button-renderer/yt-button-shape/button')
+    # filterButton.click()
+    # f11 = driver.find_element(By.XPATH, '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-search/div[1]/ytd-two-column-search-results-renderer/div/ytd-section-list-renderer/div[1]/div[2]/ytd-search-sub-menu-renderer/div/iron-collapse/div/ytd-search-filter-group-renderer[1]/ytd-search-filter-renderer[2]/a/div/yt-formatted-string')
+    # # f11 = driver.find_element(By.CSS_SELECTOR, "ytd-search-filter-group-renderer.style-scope:nth-child(1) > ytd-search-filter-renderer:nth-child(2) > a:nth-child(1)")
+    # f11.click()
 
-    #     searchbox = driver.find_element(By.ID, "search")
-    #     # searchbox = driver.find_element('xpath', '/html/body/ytd-app/div[1]/div/ytd-masthead/div[4]/div[2]/ytd-searchbox/form/div[1]/div[1]/input')
-    #     searchbox.send_keys(search_params['topic'])
-    #     searchButton = driver.find_element(By.ID, "search-icon-legacy")
-    #     # searchButton = driver.find_element('xpath', '/html/body/ytd-app/div[1]/div/ytd-masthead/div[4]/div[2]/ytd-searchbox/button')
-    #     searchButton.click()
-    #     filterButton = driver.find_element(By.CSS_SELECTOR, "ytd-toggle-button-renderer.ytd-search-sub-menu-renderer")
-    #     filterButton.click()
-    #     f11 = driver.find_element(By.CSS_SELECTOR, "ytd-search-filter-group-renderer.style-scope:nth-child(1) > ytd-search-filter-renderer:nth-child(2) > a:nth-child(1)")
-    #     f11.click()
+    # WebDriverWait(driver, 10).until(EC.visibility_of_all_elements_located)
+    # # WebDriverWait(driver, 10).until(EC.presence_of_all_elements_located((By.ID, 'thumbnail')))
+    # url = driver.current_url
+    # print(url)
+    # video = driver.find_element(By.XPATH, '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-search/div[1]/ytd-two-column-search-results-renderer/div/ytd-section-list-renderer/div[2]/ytd-item-section-renderer/div[3]/ytd-video-renderer[1]/div[1]/div/div[1]/div/h3/a')
+    # print(video.get_attribute('href'))
+    # # videos = driver.find_elements(By.ID, 'thumbnail')
+    # # for video in videos:
+    # #     print(video.get_attribute('href'))
+    # # for video in videos:
+    # #     # link = video.find_element(By.XPATH, '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-search/div[1]/ytd-two-column-search-results-renderer/div/ytd-section-list-renderer/div[2]/ytd-item-section-renderer/div[3]/ytd-video-renderer[1]/div[1]/div/div[1]/div/h3/a')
+    # #     #                                     '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-search/div[1]/ytd-two-column-search-results-renderer/div/ytd-section-list-renderer/div[2]/ytd-item-section-renderer/div[3]/ytd-video-renderer[2]/div[1]/div/div[1]/div/h3/a'
+    # #     #                                     '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-search/div[1]/ytd-two-column-search-results-renderer/div/ytd-section-list-renderer/div[2]/ytd-item-section-renderer/div[3]/ytd-video-renderer[1]/div[1]/div/div[1]/div/h3/a'
+    # #                                         # '//*[@id="video-title"]'
+    # #     link = video.find_element(By.XPATH, './/a[@id="video-title"]')
+    # #     print(link.get_attribute('href'))
+    # print('done!')
 
-    #     url = driver.current_url
-    #     print(url)
-    #     videos = driver.find_elements(By.TAG_NAME, "ytd-video-renderer")
-    #     for video in videos:
-    #         link = video.find_element(By.XPATH, './/a[@id="video-title"]')
-    #         print(link.get_attribute('href'))
+    try:
+        urls = get_youtube_video_with_selenium(search_params)
+    except WebDriverException as e:
+        # These errors are often quite long and include lots of context.
+        # Just grab the first line.
+        msg = e.msg.split("\n")[0]
+        return f"Error: {msg}", None
 
-    #     # WebDriverWait(driver, 10).until(
-    #     #     EC.presence_of_element_located((By.TAG_NAME, "body"))
-    #     # )
-
-    #     # # Get the HTML content directly from the browser's DOM
-    #     # page_source = driver.execute_script("return document.body.outerHTML;")
-    #     # soup = BeautifulSoup(page_source, "html.parser")
-    # except WebDriverException as e:
-    #     # # These errors are often quite long and include lots of context.
-    #     # # Just grab the first line.
-    #     # msg = e.msg.split("\n")[0]
-    #     # return f"Error: {msg}", None
-    #     print('FALLÓ')
-
-    # add_header(driver)
-    # summary_text = summary.summarize_text(url, text, question, driver)
-    # links = scrape_links_with_selenium(driver, url)
-
-    # # Limit links to 5
-    # if len(links) > 5:
-    #     links = links[:5]
-    # close_browser(driver)
-    return resp
+    return urls
 
 
 def extract_youtube_search_params(search_description: str) -> dict[str, str]:
@@ -270,14 +195,14 @@ def extract_youtube_search_params(search_description: str) -> dict[str, str]:
     return search_params
 
 
-def get_youtube_video_with_selenium(search_params: dict[str, str]) -> str:
+def get_youtube_video_with_selenium(search_params: dict[str, str]) -> list[str]:
     """Get YouTube video link using selenium
 
     Args:
         search_params (dict[str, str]): The search parameters in dictionary format (param_name: param_value)
 
     Returns:
-        str: The YouTube video link
+        list[str]: The list with the link of the first video result and the link of search result
     """
     options_available = {
             "chrome": ChromeOptions,
@@ -335,17 +260,20 @@ def get_youtube_video_with_selenium(search_params: dict[str, str]) -> str:
     filterButton = driver.find_element(By.XPATH, '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-search/div[1]/ytd-two-column-search-results-renderer/div/ytd-section-list-renderer/div[1]/div[2]/ytd-search-sub-menu-renderer/div/div/ytd-toggle-button-renderer/yt-button-shape/button')
     filterButton.click()
 
-    # Select the upload date filter
-    print(type(driver))
+    # Select the filters
     apply_youtube_filters(search_params, driver)
     
-    WebDriverWait(driver, 10).until(EC.visibility_of_all_elements_located)
-    # WebDriverWait(driver, 10).until(EC.presence_of_all_elements_located((By.ID, 'thumbnail')))
-    url = driver.current_url
-    print(url)
+    # Get the URL of the search result
+    search_result_url = driver.current_url
+
+    # Get the URL of the first video result
     video = driver.find_element(By.XPATH, '/html/body/ytd-app/div[1]/ytd-page-manager/ytd-search/div[1]/ytd-two-column-search-results-renderer/div/ytd-section-list-renderer/div[2]/ytd-item-section-renderer/div[3]/ytd-video-renderer[1]/div[1]/div/div[1]/div/h3/a')
-    print(video.get_attribute('href'))
-    return driver
+    video_url = video.get_attribute('href')
+
+    # Close the webdriver
+    close_browser(driver)
+
+    return [search_result_url, video_url]
 
 
 def apply_youtube_filters(search_params: dict[str, str], driver: WebDriver) -> None:
@@ -404,97 +332,6 @@ def apply_youtube_filters(search_params: dict[str, str], driver: WebDriver) -> N
     WebDriverWait(driver, 10).until(EC.visibility_of_all_elements_located)
 
 
-def scrape_text_with_selenium(url: str) -> tuple[WebDriver, str]:
-    """Scrape text from a website using selenium
-
-    Args:
-        url (str): The url of the website to scrape
-
-    Returns:
-        Tuple[WebDriver, str]: The webdriver and the text scraped from the website
-    """
-    logging.getLogger("selenium").setLevel(logging.CRITICAL)
-
-    options_available = {
-        "chrome": ChromeOptions,
-        "safari": SafariOptions,
-        "firefox": FirefoxOptions,
-    }
-
-    options = options_available[CFG.selenium_web_browser]()
-    options.add_argument(
-        "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.5615.49 Safari/537.36"
-    )
-
-    if CFG.selenium_web_browser == "firefox":
-        if CFG.selenium_headless:
-            options.headless = True
-            options.add_argument("--disable-gpu")
-        driver = webdriver.Firefox(
-            executable_path=GeckoDriverManager().install(), options=options
-        )
-    elif CFG.selenium_web_browser == "safari":
-        # Requires a bit more setup on the users end
-        # See https://developer.apple.com/documentation/webkit/testing_with_webdriver_in_safari
-        driver = webdriver.Safari(options=options)
-    else:
-        if platform == "linux" or platform == "linux2":
-            options.add_argument("--disable-dev-shm-usage")
-            options.add_argument("--remote-debugging-port=9222")
-
-        options.add_argument("--no-sandbox")
-        if CFG.selenium_headless:
-            options.add_argument("--headless=new")
-            options.add_argument("--disable-gpu")
-
-        chromium_driver_path = Path("/usr/bin/chromedriver")
-
-        driver = webdriver.Chrome(
-            executable_path=chromium_driver_path
-            if chromium_driver_path.exists()
-            else ChromeDriverManager().install(),
-            options=options,
-        )
-    driver.get(url)
-
-    WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.TAG_NAME, "body"))
-    )
-
-    # Get the HTML content directly from the browser's DOM
-    page_source = driver.execute_script("return document.body.outerHTML;")
-    soup = BeautifulSoup(page_source, "html.parser")
-
-    for script in soup(["script", "style"]):
-        script.extract()
-
-    text = soup.get_text()
-    lines = (line.strip() for line in text.splitlines())
-    chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
-    text = "\n".join(chunk for chunk in chunks if chunk)
-    return driver, text
-
-
-def scrape_links_with_selenium(driver: WebDriver, url: str) -> list[str]:
-    """Scrape links from a website using selenium
-
-    Args:
-        driver (WebDriver): The webdriver to use to scrape the links
-
-    Returns:
-        List[str]: The links scraped from the website
-    """
-    page_source = driver.page_source
-    soup = BeautifulSoup(page_source, "html.parser")
-
-    for script in soup(["script", "style"]):
-        script.extract()
-
-    hyperlinks = extract_hyperlinks(soup, url)
-
-    return format_hyperlinks(hyperlinks)
-
-
 def close_browser(driver: WebDriver) -> None:
     """Close the browser
 
@@ -505,23 +342,6 @@ def close_browser(driver: WebDriver) -> None:
         None
     """
     driver.quit()
-
-
-def add_header(driver: WebDriver) -> None:
-    """Add a header to the website
-
-    Args:
-        driver (WebDriver): The webdriver to use to add the header
-
-    Returns:
-        None
-    """
-    try:
-        with open(f"{FILE_DIR}/js/overlay.js", "r") as overlay_file:
-            overlay_script = overlay_file.read()
-        driver.execute_script(overlay_script)
-    except Exception as e:
-        print(f"Error executing overlay.js: {e}")
 
 
 if __name__ == "__main__":
