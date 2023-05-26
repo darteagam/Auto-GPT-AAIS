@@ -158,9 +158,13 @@ def run_auto_gpt(
     )
     logger.typewriter_log("Using Browser:", Fore.GREEN, cfg.selenium_web_browser)
     system_prompt = ai_config.construct_full_prompt()
-    print(system_prompt + '\n\n')
+
     if cfg.debug_mode:
         logger.typewriter_log("Prompt:", Fore.GREEN, system_prompt)
+
+    print('Memory: ', memory)
+    print('Full message history: ', full_message_history)
+    print('System Prompt: ', system_prompt + '\n\n')
 
     agent = Agent(
         ai_name=ai_name,

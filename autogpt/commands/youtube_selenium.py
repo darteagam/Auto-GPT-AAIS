@@ -37,7 +37,6 @@ CFG = Config()
     "YouTube Search",
     '"search_description": "<description_of_YouTube_search>"',
 )
-@validate_url
 def youtube_search(search_description: str) -> list[str]:
     """Browse YouTube and return a list with two links:
         - link of the first video result (according to a set of filters)
@@ -132,7 +131,7 @@ def youtube_search(search_description: str) -> list[str]:
         # Just grab the first line.
         msg = e.msg.split("\n")[0]
         return f"Error: {msg}", None
-
+    print(urls)
     return urls
 
 
@@ -233,7 +232,7 @@ def get_youtube_video_with_selenium(search_params: dict[str, str]) -> list[str]:
 
         options.add_argument("--no-sandbox")
         if CFG.selenium_headless:
-            # options.add_argument("--headless=new")
+            options.add_argument("--headless=new")
             options.add_argument("--disable-gpu")
 
         chromium_driver_path = Path("/usr/bin/chromedriver")

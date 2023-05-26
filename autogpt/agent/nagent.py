@@ -91,6 +91,10 @@ class Agent:
                 break
             # Send message to AI, get response
             with Spinner("Thinking... "):
+                print('system prompt: ', self.system_prompt)
+                print('triggering prompt: ', self.triggering_prompt)
+                print('full message history: ', self.full_message_history)
+                print('memory: ', self.memory)
                 assistant_reply = chat_with_ai(
                     self,
                     self.system_prompt,
