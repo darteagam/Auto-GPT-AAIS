@@ -130,7 +130,7 @@ def run_auto_gpt(
     # command_registry.import_commands("autogpt.commands.twitter")
     command_registry.import_commands("autogpt.commands.web_selenium")
     # command_registry.import_commands("autogpt.commands.write_tests")
-    command_registry.import_commands("autogpt.app")
+    command_registry.import_commands("autogpt.napp")
 
     ai_config = construct_main_ai_config()
     ai_name = ai_config.ai_name
