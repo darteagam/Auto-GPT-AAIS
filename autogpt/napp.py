@@ -5,7 +5,7 @@ from typing import Dict, List, NoReturn, Union
 from autogpt.agent.agent_manager import AgentManager
 from autogpt.commands.command import CommandRegistry, command
 from autogpt.commands.web_requests import scrape_links, scrape_text
-from autogpt.config import Config
+from autogpt.config.nconfig import Config
 from autogpt.logs import logger
 from autogpt.memory import get_memory
 from autogpt.processing.text import summarize_text
@@ -169,9 +169,6 @@ def get_hyperlinks(url: str) -> Union[str, List[str]]:
         str or list: The hyperlinks on the page
     """
     return scrape_links(url)
-
-
-def ask_user()
 
 
 def shutdown() -> NoReturn:

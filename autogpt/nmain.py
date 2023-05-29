@@ -118,6 +118,7 @@ def run_auto_gpt(
     cfg.set_plugins(scan_plugins(cfg, cfg.debug_mode))
     # Create a CommandRegistry instance and scan default folder
     command_registry = CommandRegistry()
+    command_registry.import_commands("autogpt.commands.conversation")
     command_registry.import_commands("autogpt.commands.youtube_selenium")
     # command_registry.import_commands("autogpt.commands.analyze_code")
     # command_registry.import_commands("autogpt.commands.audio_text")
