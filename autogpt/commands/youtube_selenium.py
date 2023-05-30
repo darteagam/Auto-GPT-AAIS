@@ -49,7 +49,7 @@ def youtube_search(search_description: str) -> list[str]:
         list[str]: The list with the link of the first video result and the link of search result
     """
     search_params = extract_youtube_search_params(search_description)
-    
+    print(search_params)
     # options_available = {
     #         "chrome": ChromeOptions,
     #         "safari": SafariOptions,
@@ -177,7 +177,7 @@ def extract_youtube_search_params(search_description: str) -> dict[str, str]:
                 raise
             if attempt == num_retries - 1:
                 raise
-        print('Error: API Bad gateway. Waiting ' + backoff + ' seconds...')
+        print('Error: API Bad gateway. Waiting ' + str(backoff) + ' seconds...')
         time.sleep(backoff)
     if response is None:
         print(
@@ -232,7 +232,7 @@ def get_youtube_video_with_selenium(search_params: dict[str, str]) -> list[str]:
 
         options.add_argument("--no-sandbox")
         if CFG.selenium_headless:
-            options.add_argument("--headless=new")
+            #options.add_argument("--headless=new")
             options.add_argument("--disable-gpu")
 
         chromium_driver_path = Path("/usr/bin/chromedriver")
@@ -344,4 +344,5 @@ def close_browser(driver: WebDriver) -> None:
 
 
 if __name__ == "__main__":
-    r = youtube_search('Play the first dota 2 video of less than 4 minutes length sorted by views')
+    # r = youtube_search('Play the first dota 2 video of less than 4 minutes length sorted by views')
+    r = youtube_search('Give me a video about Joe Biden of today')
