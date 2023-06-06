@@ -210,18 +210,18 @@ def run_auto_gpt(
         if user_id not in agents:
             # conversations[user_id] = agent.start_interaction()
             agents[user_id] = Agent(ai_name=ai_name,
-                                           memory=memory,
-                                           full_message_history=full_message_history,
-                                           next_action_count=next_action_count,
-                                           command_registry=command_registry,
-                                           config=ai_config,
-                                           system_prompt=system_prompt,
-                                           triggering_prompt=DEFAULT_TRIGGERING_PROMPT,
-                                           workspace_directory=workspace_directory,
-                                           )
+                                    memory=memory,
+                                    full_message_history=full_message_history,
+                                    next_action_count=next_action_count,
+                                    command_registry=command_registry,
+                                    config=ai_config,
+                                    system_prompt=system_prompt,
+                                    triggering_prompt=DEFAULT_TRIGGERING_PROMPT,
+                                    workspace_directory=workspace_directory,
+                                    )
 
         try:
-            answer = agents[user_id].generate_answer(question) # start_interaction()
+            answer = agents[user_id].generate_answer(question)
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
         
