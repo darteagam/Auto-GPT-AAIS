@@ -30,6 +30,7 @@ class Message(BaseModel):
     user_id: str
     text: str
     language: str
+    start_key: bool
 
     @validator('user_id')
     def check_user_id(cls, v):
@@ -204,6 +205,7 @@ def run_auto_gpt(
         user_id = message.user_id
         question = message.text
         language = message.language
+        start_key = message.start_key
 
         # conversations = {'12345': Agent(12345), '2345': Agent(2345), ...}
 
@@ -221,7 +223,10 @@ def run_auto_gpt(
                                     )
 
         try:
-            answer = agents[user_id].generate_answer(question)
+            if start_key:
+                answer = agents[user_id].start_agent()
+            else:
+                answer = agents[user_id].generate_answer(question)
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
         
