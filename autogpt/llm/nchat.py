@@ -223,13 +223,15 @@ def chat_with_ai(
 
             # TODO: use a model defined elsewhere, so that model can contain
             # temperature and other settings we care about
-            print('current context: ', current_context)
+            print('CONTEXT TO ANALYZE\n')
+            print(current_context)
             assistant_reply = create_chat_completion(
                 model=model,
                 messages=current_context,
                 max_tokens=tokens_remaining,
             )
-
+            print('ASSISTANT REPLY\n')
+            print(assistant_reply)
             # Update full message history
             full_message_history.append(create_chat_message("user", user_input))
             full_message_history.append(

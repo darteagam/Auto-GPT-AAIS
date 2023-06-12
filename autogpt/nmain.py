@@ -26,29 +26,29 @@ from pydantic import BaseModel, validator
 from typing import Optional
 
 
-class Message(BaseModel):
-    user_id: str
-    text: str
-    language: str
-    start_key: bool
+# class Message(BaseModel):
+#     user_id: str
+#     text: str
+#     language: str
+#     start_key: bool
 
-    @validator('user_id')
-    def check_user_id(cls, v):
-        if v.strip() == '':
-            raise HTTPException(status_code=400, detail="The user ID cannot be empty.")
-        return v
+#     @validator('user_id')
+#     def check_user_id(cls, v):
+#         if v.strip() == '':
+#             raise HTTPException(status_code=400, detail="The user ID cannot be empty.")
+#         return v
 
-    @validator('text')
-    def check_question(cls, v):
-        if v.strip() == '':
-            raise HTTPException(status_code=400, detail="The question cannot be empty.")
-        return v
+#     @validator('text')
+#     def check_question(cls, v):
+#         if v.strip() == '':
+#             raise HTTPException(status_code=400, detail="The question cannot be empty.")
+#         return v
 
-    @validator('language')
-    def check_question(cls, v):
-        if v.strip() == '':
-            raise HTTPException(status_code=400, detail="The language cannot be empty.")
-        return v
+#     @validator('language')
+#     def check_question(cls, v):
+#         if v.strip() == '':
+#             raise HTTPException(status_code=400, detail="The language cannot be empty.")
+#         return v
 
 
 def run_auto_gpt(
@@ -67,8 +67,8 @@ def run_auto_gpt(
     workspace_directory: str,
     install_plugin_deps: bool,
 ):
-    app = FastAPI()
-    agents = {}
+    # app = FastAPI()
+    # agents = {}
 
     # Configure logging before we do anything else.
     logger.set_level(logging.DEBUG if debug else logging.INFO)
@@ -195,42 +195,42 @@ def run_auto_gpt(
     if cfg.debug_mode:
         logger.typewriter_log("Prompt:", Fore.GREEN, system_prompt)
 
-    print('Memory: ', memory)
-    print('Full message history: ', full_message_history)
-    print('System Prompt: ', system_prompt + '\n\n')
+    # print('Memory: ', memory)
+    # print('Full message history: ', full_message_history)
+    # print('System Prompt: ', system_prompt + '\n\n')
 
 
-    @app.post("/answer")
-    async def get_answer(message: Message):
-        user_id = message.user_id
-        question = message.text
-        language = message.language
-        start_key = message.start_key
+    # @app.post("/answer")
+    # async def get_answer(message: Message):
+    #     user_id = message.user_id
+    #     question = message.text
+    #     language = message.language
+    #     start_key = message.start_key
 
-        # conversations = {'12345': Agent(12345), '2345': Agent(2345), ...}
+    #     # conversations = {'12345': Agent(12345), '2345': Agent(2345), ...}
 
-        if user_id not in agents:
-            # conversations[user_id] = agent.start_interaction()
-            agents[user_id] = Agent(ai_name=ai_name,
-                                    memory=memory,
-                                    full_message_history=full_message_history,
-                                    next_action_count=next_action_count,
-                                    command_registry=command_registry,
-                                    config=ai_config,
-                                    system_prompt=system_prompt,
-                                    triggering_prompt=DEFAULT_TRIGGERING_PROMPT,
-                                    workspace_directory=workspace_directory,
-                                    )
+    #     if user_id not in agents:
+    #         # conversations[user_id] = agent.start_interaction()
+    #         agents[user_id] = Agent(ai_name=ai_name,
+    #                                 memory=memory,
+    #                                 full_message_history=full_message_history,
+    #                                 next_action_count=next_action_count,
+    #                                 command_registry=command_registry,
+    #                                 config=ai_config,
+    #                                 system_prompt=system_prompt,
+    #                                 triggering_prompt=DEFAULT_TRIGGERING_PROMPT,
+    #                                 workspace_directory=workspace_directory,
+    #                                 )
 
-        try:
-            if start_key:
-                answer = agents[user_id].start_agent()
-            else:
-                answer = agents[user_id].generate_answer(question)
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+    #     try:
+    #         if start_key:
+    #             answer = agents[user_id].start_agent()
+    #         else:
+    #             answer = agents[user_id].generate_answer(question)
+    #     except Exception as e:
+    #         raise HTTPException(status_code=500, detail=str(e))
         
-        return {"answer": answer}
+    #     return {"answer": answer}
 
 
     agent = Agent(
