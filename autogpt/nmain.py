@@ -9,7 +9,7 @@ from autogpt.agent.nagent import Agent
 from autogpt.commands.command import CommandRegistry
 from autogpt.config.nconfig import Config, check_openai_api_key
 from autogpt.configurator import create_config
-from autogpt.logs import logger
+from autogpt.nlogs import logger
 from autogpt.memory import get_memory
 from autogpt.plugins import scan_plugins
 from autogpt.prompts.nprompt import DEFAULT_TRIGGERING_PROMPT, construct_main_ai_config

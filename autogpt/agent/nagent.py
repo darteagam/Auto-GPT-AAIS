@@ -1,13 +1,13 @@
 from colorama import Fore, Style
 
-from autogpt.app import execute_command, get_command
+from autogpt.napp import execute_command, get_command
 from autogpt.config.nconfig import Config
 from autogpt.json_utils.json_fix_llm import fix_json_using_multiple_techniques
-from autogpt.json_utils.utilities import LLM_DEFAULT_RESPONSE_FORMAT, validate_json
+from autogpt.json_utils.nutilities import LLM_DEFAULT_RESPONSE_FORMAT, validate_json
 from autogpt.llm.nchat import chat_with_ai, create_chat_message
 from autogpt.llm import create_chat_completion
 from autogpt.llm.token_counter import count_string_tokens
-from autogpt.logs import logger, print_assistant_thoughts
+from autogpt.nlogs import logger, print_assistant_thoughts
 from autogpt.speech import say_text
 from autogpt.spinner import Spinner
 from autogpt.utils import clean_input
@@ -142,7 +142,7 @@ class Agent:
                 )
 
                 logger.info(
-                    "Enter 'y' to authorise command, 'y -N' to run N continuous commands, 's' to run self-feedback commands"
+                    "Enter 'y' to authorise command, 'y -N' to run N continuous commands, 's' to run self-feedback commands "
                     "'n' to exit program, or enter feedback for "
                     f"{self.ai_name}..."
                 )
