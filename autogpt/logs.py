@@ -258,3 +258,34 @@ def print_assistant_thoughts(
     # Speak the assistant's thoughts
     if speak_mode and assistant_thoughts_speak:
         say_text(assistant_thoughts_speak)
+
+def nprint_assistant_thoughts(
+    ai_name: object,
+    assistant_reply_json_valid: object,
+    speak_mode: bool = False,
+) -> None:
+    assistant_thoughts_reasoning = None
+    assistant_thoughts_plan = None
+
+    assistant_thoughts = assistant_reply_json_valid.get("thoughts", {})
+    assistant_thoughts_thought = assistant_thoughts.get("thought")
+    if assistant_thoughts:
+        assistant_thoughts_reasoning = assistant_thoughts.get("reasoning")
+        assistant_thoughts_plan = assistant_thoughts.get("plan")
+    logger.typewriter_log(
+        f"{ai_name.upper()} THOUGHTS:", Fore.YELLOW, f"{assistant_thoughts_thought}"
+    )
+    logger.typewriter_log("REASONING:", Fore.YELLOW, f"{assistant_thoughts_reasoning}")
+    if assistant_thoughts_plan:
+        logger.typewriter_log("PLAN:", Fore.YELLOW, "")
+        # If it's a list, join it into a string
+        if isinstance(assistant_thoughts_plan, list):
+            assistant_thoughts_plan = "\n".join(assistant_thoughts_plan)
+        elif isinstance(assistant_thoughts_plan, dict):
+            assistant_thoughts_plan = str(assistant_thoughts_plan)
+
+        # Split the input_string using the newline character and dashes
+        lines = assistant_thoughts_plan.split("\n")
+        for line in lines:
+            line = line.lstrip("- ")
+            logger.typewriter_log("- ", Fore.GREEN, line.strip())

@@ -7,7 +7,7 @@ from autogpt.json_utils.nutilities import LLM_DEFAULT_RESPONSE_FORMAT, validate_
 from autogpt.llm.nchat import chat_with_ai, create_chat_message
 from autogpt.llm import create_chat_completion
 from autogpt.llm.token_counter import count_string_tokens
-from autogpt.nlogs import logger, print_assistant_thoughts
+from autogpt.logs import logger, nprint_assistant_thoughts
 from autogpt.speech import say_text
 from autogpt.spinner import Spinner
 from autogpt.utils import clean_input
@@ -104,8 +104,7 @@ class Agent:
                     self.memory,
                     cfg.fast_token_limit,
                 )  # TODO: This hardcodes the model to use GPT3.5. Make this an argument
-            print('FULL MESSAGE HISTORY\n')
-            print(self.full_message_history)
+            
             assistant_reply_json = fix_json_using_multiple_techniques(assistant_reply)
             for plugin in cfg.plugins:
                 if not plugin.can_handle_post_planning():
@@ -117,7 +116,7 @@ class Agent:
                 validate_json(assistant_reply_json, LLM_DEFAULT_RESPONSE_FORMAT)
                 # Get command name and arguments
                 try:
-                    print_assistant_thoughts(
+                    nprint_assistant_thoughts(
                         self.ai_name, assistant_reply_json, cfg.speak_mode
                     )
                     command_name, arguments = get_command(assistant_reply_json)
@@ -269,6 +268,9 @@ class Agent:
                 logger.typewriter_log(
                     "SYSTEM: ", Fore.YELLOW, "Unable to execute command"
                 )
+            
+            print('FULL MESSAGE HISTORY\n')
+            print(self.full_message_history)
 
     # def start_agent(self):
     #     # Start interaction with agent
