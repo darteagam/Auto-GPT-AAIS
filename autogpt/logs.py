@@ -262,7 +262,6 @@ def print_assistant_thoughts(
 def nprint_assistant_thoughts(
     ai_name: object,
     assistant_reply_json_valid: object,
-    speak_mode: bool = False,
 ) -> None:
     assistant_thoughts_reasoning = None
     assistant_thoughts_plan = None

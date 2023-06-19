@@ -1,4 +1,3 @@
-"""The application entry point.  Can be invoked by a CLI or any other front end application."""
 import logging
 import sys
 from pathlib import Path
@@ -25,8 +24,6 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, validator
 from typing import Optional
 
-import uvicorn
-
 
 class Message(BaseModel):
     user_id: str
@@ -34,49 +31,32 @@ class Message(BaseModel):
     language: str
     start_key: bool
 
-    # @validator('user_id')
-    # def check_user_id(cls, v):
-    #     if v.strip() == '':
-    #         raise HTTPException(status_code=400, detail="The user ID cannot be empty.")
-    #     return v
+    @validator('user_id')
+    def check_user_id(cls, v):
+        if v.strip() == '':
+            raise HTTPException(status_code=400, detail="The user ID cannot be empty.")
+        return v
 
-    # @validator('text')
-    # def check_question(cls, v):
-    #     if v.strip() == '':
-    #         raise HTTPException(status_code=400, detail="The question cannot be empty.")
-    #     return v
+    @validator('text')
+    def check_question(cls, v):
+        if v.strip() == '':
+            raise HTTPException(status_code=400, detail="The question cannot be empty.")
+        return v
 
-    # @validator('language')
-    # def check_question(cls, v):
-    #     if v.strip() == '':
-    #         raise HTTPException(status_code=400, detail="The language cannot be empty.")
-    #     return v
+    @validator('language')
+    def check_question(cls, v):
+        if v.strip() == '':
+            raise HTTPException(status_code=400, detail="The language cannot be empty.")
+        return v
 
 
-def run_auto_gpt(
-    continuous: bool,
-    continuous_limit: int,
-    ai_settings: str,
-    skip_reprompt: bool,
-    speak: bool,
-    debug: bool,
-    gpt3only: bool,
-    gpt4only: bool,
-    memory_type: str,
-    browser_name: str,
-    allow_downloads: bool,
-    skip_news: bool,
-    workspace_directory: str,
-    install_plugin_deps: bool,
-):
-    
-    app = FastAPI()
-    agents = {}
-    agents_cache_limit = 5
+app = FastAPI()
+agents = {}
+agents_cache_limit = 5
 
-    # Configure logging before we do anything else.
-    logger.set_level(logging.DEBUG if debug else logging.INFO)
-    logger.speak_mode = speak
+# Configure logging before we do anything else.
+logger.set_level(logging.DEBUG if debug else logging.INFO)
+logger.speak_mode = speak
 
     cfg = Config()
     # TODO: fill in llm values here
@@ -254,18 +234,3 @@ def run_auto_gpt(
             raise HTTPException(status_code=500, detail=str(e))
         
         return {"aaia_message": aaia_message}
-
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-
-    # agent = Agent(
-    #     ai_name=ai_name,
-    #     memory=memory,
-    #     full_message_history=full_message_history,
-    #     next_action_count=next_action_count,
-    #     command_registry=command_registry,
-    #     config=ai_config,
-    #     system_prompt=system_prompt,
-    #     triggering_prompt=DEFAULT_TRIGGERING_PROMPT,
-    #     workspace_directory=workspace_directory,
-    # )
-    # agent.start_interaction_loop()

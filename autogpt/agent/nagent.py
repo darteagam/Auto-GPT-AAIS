@@ -272,378 +272,242 @@ class Agent:
             print('FULL MESSAGE HISTORY\n')
             print(self.full_message_history)
 
-    # def start_agent(self):
-    #     # Start interaction with agent
-    #     cfg = Config()
-    #     loop_count = 0
-    #     command_name = None
-    #     arguments = None
+    def start_agent(self):
+        print('START AGENT')
+        # Interaction Loop
+        cfg = Config()
+        loop_count = 0
+        command_name = None
+        arguments = None
 
-    #     with Spinner("Thinking... "):
-    #         assistant_reply = chat_with_ai(self,
-    #                                        self.system_prompt,
-    #                                        self.triggering_prompt,
-    #                                        self.full_message_history,
-    #                                        self.memory,
-    #                                        cfg.fast_token_limit,
-    #                                        )  # TODO: This hardcodes the model to use GPT3.5. Make this an argument
+        while True:
+            # Discontinue if continuous limit is reached
+            loop_count += 1
+            if (
+                cfg.continuous_mode
+                and cfg.continuous_limit > 0
+                and loop_count > cfg.continuous_limit
+            ):
+                logger.typewriter_log(
+                    "Continuous Limit Reached: ", Fore.YELLOW, f"{cfg.continuous_limit}"
+                )
+                break
+            # Send message to AI, get response
+            with Spinner("Thinking... "):
+                assistant_reply = chat_with_ai(
+                    self,
+                    self.system_prompt,
+                    self.triggering_prompt,
+                    self.full_message_history,
+                    self.memory,
+                    cfg.fast_token_limit,
+                )  # TODO: This hardcodes the model to use GPT3.5. Make this an argument
+            
+            assistant_reply_json = fix_json_using_multiple_techniques(assistant_reply)
+            for plugin in cfg.plugins:
+                if not plugin.can_handle_post_planning():
+                    continue
+                assistant_reply_json = plugin.post_planning(self, assistant_reply_json)
 
-    #     assistant_reply_json = fix_json_using_multiple_techniques(assistant_reply)
-    #     for plugin in cfg.plugins:
-    #         if not plugin.can_handle_post_planning():
-    #             continue
-    #         assistant_reply_json = plugin.post_planning(self, assistant_reply_json)
+            # Print Assistant thoughts
+            if assistant_reply_json != {}:
+                validate_json(assistant_reply_json, LLM_DEFAULT_RESPONSE_FORMAT)
+                # Get command name and arguments
+                try:
+                    nprint_assistant_thoughts(
+                        self.ai_name, assistant_reply_json
+                    )
+                    command_name, arguments = get_command(assistant_reply_json)
+                    arguments = self._resolve_pathlike_command_args(arguments)
+                except Exception as e:
+                    logger.error("Error: \n", str(e))
 
-    #         # Print Assistant thoughts
-    #         if assistant_reply_json != {}:
-    #             validate_json(assistant_reply_json, LLM_DEFAULT_RESPONSE_FORMAT)
-    #             # Get command name and arguments
-    #             try:
-    #                 print_assistant_thoughts(
-    #                     self.ai_name, assistant_reply_json, cfg.speak_mode
-    #                 )
-    #                 command_name, arguments = get_command(assistant_reply_json)
-    #                 if cfg.speak_mode:
-    #                     say_text(f"I want to execute {command_name}")
+            # Print command
+            logger.typewriter_log(
+                "NEXT ACTION: ",
+                Fore.CYAN,
+                f"COMMAND = {Fore.CYAN}{command_name}{Style.RESET_ALL}"
+                f"  ARGUMENTS = {Fore.CYAN}{arguments}{Style.RESET_ALL}",
+            )
 
-    #                 arguments = self._resolve_pathlike_command_args(arguments)
+            # Execute command
+            if command_name is not None and command_name.lower().startswith("error"):
+                result = (
+                    f"Command {command_name} threw the following error: {arguments}"
+                )
+            else:
+                for plugin in cfg.plugins:
+                    if not plugin.can_handle_pre_command():
+                        continue
+                    command_name, arguments = plugin.pre_command(
+                        command_name, arguments
+                    )
+                command_result = execute_command(
+                    self.command_registry,
+                    command_name,
+                    arguments,
+                    self.config.prompt_generator,
+                )
+                result = f"Command {command_name} returned: " f"{command_result}"
 
-    #             except Exception as e:
-    #                 logger.error("Error: \n", str(e))
+                result_tlength = count_string_tokens(
+                    str(command_result), cfg.fast_llm_model
+                )
+                memory_tlength = count_string_tokens(
+                    str(self.summary_memory), cfg.fast_llm_model
+                )
+                if result_tlength + memory_tlength + 600 > cfg.fast_token_limit:
+                    result = f"Failure: command {command_name} returned too much output. \
+                        Do not execute this command again with the same arguments."
 
-    #         if not cfg.continuous_mode and self.next_action_count == 0:
-    #             # ### GET USER AUTHORIZATION TO EXECUTE COMMAND ###
-    #             # Get key press: Prompt the user to press enter to continue or escape
-    #             # to exit
-    #             self.user_input = ""
-    #             logger.typewriter_log(
-    #                 "NEXT ACTION: ",
-    #                 Fore.CYAN,
-    #                 f"COMMAND = {Fore.CYAN}{command_name}{Style.RESET_ALL}  "
-    #                 f"ARGUMENTS = {Fore.CYAN}{arguments}{Style.RESET_ALL}",
-    #             )
+                for plugin in cfg.plugins:
+                    if not plugin.can_handle_post_command():
+                        continue
+                    result = plugin.post_command(command_name, result)
 
-    #             logger.info(
-    #                 "Enter 'y' to authorise command, 'y -N' to run N continuous commands, 's' to run self-feedback commands"
-    #                 "'n' to exit program, or enter feedback for "
-    #                 f"{self.ai_name}..."
-    #             )
-    #             while True:
-    #                 if cfg.chat_messages_enabled:
-    #                     console_input = clean_input("Waiting for your response...")
-    #                 else:
-    #                     console_input = clean_input(
-    #                         Fore.MAGENTA + "Input:" + Style.RESET_ALL
-    #                     )
-    #                 if console_input.lower().strip() == cfg.authorise_key:
-    #                     user_input = "GENERATE NEXT COMMAND JSON"
-    #                     break
-    #                 elif console_input.lower().strip() == "s":
-    #                     logger.typewriter_log(
-    #                         "-=-=-=-=-=-=-= THOUGHTS, REASONING, PLAN AND CRITICISM WILL NOW BE VERIFIED BY AGENT -=-=-=-=-=-=-=",
-    #                         Fore.GREEN,
-    #                         "",
-    #                     )
-    #                     thoughts = assistant_reply_json.get("thoughts", {})
-    #                     self_feedback_resp = self.get_self_feedback(
-    #                         thoughts, cfg.fast_llm_model
-    #                     )
-    #                     logger.typewriter_log(
-    #                         f"SELF FEEDBACK: {self_feedback_resp}",
-    #                         Fore.YELLOW,
-    #                         "",
-    #                     )
-    #                     if self_feedback_resp[0].lower().strip() == cfg.authorise_key:
-    #                         user_input = "GENERATE NEXT COMMAND JSON"
-    #                     else:
-    #                         user_input = self_feedback_resp
-    #                     break
-    #                 elif console_input.lower().strip() == "":
-    #                     logger.warn("Invalid input format.")
-    #                     continue
-    #                 elif console_input.lower().startswith(f"{cfg.authorise_key} -"):
-    #                     try:
-    #                         self.next_action_count = abs(
-    #                             int(console_input.split(" ")[1])
-    #                         )
-    #                         user_input = "GENERATE NEXT COMMAND JSON"
-    #                     except ValueError:
-    #                         logger.warn(
-    #                             "Invalid input format. Please enter 'y -n' where n is"
-    #                             " the number of continuous tasks."
-    #                         )
-    #                         continue
-    #                     break
-    #                 elif console_input.lower() == cfg.exit_key:
-    #                     user_input = "EXIT"
-    #                     break
-    #                 else:
-    #                     user_input = console_input
-    #                     command_name = "human_feedback"
-    #                     break
+            # Check if there's a result from the command append it to the message
+            # history
+            if result is not None:
+                self.full_message_history.append(create_chat_message("system", result))
+                logger.typewriter_log("SYSTEM: ", Fore.YELLOW, result)
+            else:
+                self.full_message_history.append(
+                    create_chat_message("system", "Unable to execute command")
+                )
+                logger.typewriter_log(
+                    "SYSTEM: ", Fore.YELLOW, "Unable to execute command"
+                )
+            print('FULL MESSAGE HISTORY\n')
+            print(self.full_message_history)
 
-    #             if user_input == "GENERATE NEXT COMMAND JSON":
-    #                 logger.typewriter_log(
-    #                     "-=-=-=-=-=-=-= COMMAND AUTHORISED BY USER -=-=-=-=-=-=-=",
-    #                     Fore.MAGENTA,
-    #                     "",
-    #                 )
-    #             elif user_input == "EXIT":
-    #                 logger.info("Exiting...")
-    #                 break
-    #         else:
-    #             # Print command
-    #             logger.typewriter_log(
-    #                 "NEXT ACTION: ",
-    #                 Fore.CYAN,
-    #                 f"COMMAND = {Fore.CYAN}{command_name}{Style.RESET_ALL}"
-    #                 f"  ARGUMENTS = {Fore.CYAN}{arguments}{Style.RESET_ALL}",
-    #             )
+            if command_name == 'message_user':
+                break
+        
+        return command_result
 
-    #         # Execute command
-    #         if command_name is not None and command_name.lower().startswith("error"):
-    #             result = (
-    #                 f"Command {command_name} threw the following error: {arguments}"
-    #             )
-    #         elif command_name == "human_feedback":
-    #             result = f"Human feedback: {user_input}"
-    #         else:
-    #             for plugin in cfg.plugins:
-    #                 if not plugin.can_handle_pre_command():
-    #                     continue
-    #                 command_name, arguments = plugin.pre_command(
-    #                     command_name, arguments
-    #                 )
-    #             command_result = execute_command(
-    #                 self.command_registry,
-    #                 command_name,
-    #                 arguments,
-    #                 self.config.prompt_generator,
-    #             )
-    #             result = f"Command {command_name} returned: " f"{command_result}"
+    def generate_answer(self, question):
+        # Interaction Loop
+        cfg = Config()
+        loop_count = 0
+        command_name = None
+        arguments = None
+        if not question.endswith('.'):
+            question = question + '. '
+        else:
+            question = question + ' '
 
-    #             result_tlength = count_string_tokens(
-    #                 str(command_result), cfg.fast_llm_model
-    #             )
-    #             memory_tlength = count_string_tokens(
-    #                 str(self.summary_memory), cfg.fast_llm_model
-    #             )
-    #             if result_tlength + memory_tlength + 600 > cfg.fast_token_limit:
-    #                 result = f"Failure: command {command_name} returned too much output. \
-    #                     Do not execute this command again with the same arguments."
+        while True:
+            # Discontinue if continuous limit is reached
+            loop_count += 1
+            if (
+                cfg.continuous_mode
+                and cfg.continuous_limit > 0
+                and loop_count > cfg.continuous_limit
+            ):
+                logger.typewriter_log(
+                    "Continuous Limit Reached: ", Fore.YELLOW, f"{cfg.continuous_limit}"
+                )
+                break
+            # Send message to AI, get response
+            with Spinner("Thinking... "):
+                if loop_count == 1:
+                    assistant_reply = chat_with_ai(
+                        self,
+                        self.system_prompt,
+                        question + self.triggering_prompt,
+                        self.full_message_history,
+                        self.memory,
+                        cfg.fast_token_limit,
+                    )  # TODO: This hardcodes the model to use GPT3.5. Make this an argument
+                else:
+                    assistant_reply = chat_with_ai(
+                        self,
+                        self.system_prompt,
+                        self.triggering_prompt,
+                        self.full_message_history,
+                        self.memory,
+                        cfg.fast_token_limit,
+                    )  # TODO: This hardcodes the model to use GPT3.5. Make this an argument
+            
+            assistant_reply_json = fix_json_using_multiple_techniques(assistant_reply)
+            for plugin in cfg.plugins:
+                if not plugin.can_handle_post_planning():
+                    continue
+                assistant_reply_json = plugin.post_planning(self, assistant_reply_json)
 
-    #             for plugin in cfg.plugins:
-    #                 if not plugin.can_handle_post_command():
-    #                     continue
-    #                 result = plugin.post_command(command_name, result)
-    #             if self.next_action_count > 0:
-    #                 self.next_action_count -= 1
+            # Print Assistant thoughts
+            if assistant_reply_json != {}:
+                validate_json(assistant_reply_json, LLM_DEFAULT_RESPONSE_FORMAT)
+                # Get command name and arguments
+                try:
+                    nprint_assistant_thoughts(
+                        self.ai_name, assistant_reply_json
+                    )
+                    command_name, arguments = get_command(assistant_reply_json)
+                    arguments = self._resolve_pathlike_command_args(arguments)
+                except Exception as e:
+                    logger.error("Error: \n", str(e))
 
-    #         # Check if there's a result from the command append it to the message
-    #         # history
-    #         if result is not None:
-    #             self.full_message_history.append(create_chat_message("system", result))
-    #             logger.typewriter_log("SYSTEM: ", Fore.YELLOW, result)
-    #         else:
-    #             self.full_message_history.append(
-    #                 create_chat_message("system", "Unable to execute command")
-    #             )
-    #             logger.typewriter_log(
-    #                 "SYSTEM: ", Fore.YELLOW, "Unable to execute command"
-    #             )
+            # Print command
+            logger.typewriter_log(
+                "NEXT ACTION: ",
+                Fore.CYAN,
+                f"COMMAND = {Fore.CYAN}{command_name}{Style.RESET_ALL}"
+                f"  ARGUMENTS = {Fore.CYAN}{arguments}{Style.RESET_ALL}",
+            )
 
-    # def generate_answer(self, question):
-    #     # Interaction Loop
-    #     cfg = Config()
-    #     loop_count = 0
-    #     command_name = None
-    #     arguments = None
+            # Execute command
+            if command_name is not None and command_name.lower().startswith("error"):
+                result = (
+                    f"Command {command_name} threw the following error: {arguments}"
+                )
+            else:
+                for plugin in cfg.plugins:
+                    if not plugin.can_handle_pre_command():
+                        continue
+                    command_name, arguments = plugin.pre_command(
+                        command_name, arguments
+                    )
+                command_result = execute_command(
+                    self.command_registry,
+                    command_name,
+                    arguments,
+                    self.config.prompt_generator,
+                )
+                result = f"Command {command_name} returned: " f"{command_result}"
 
-    #     while True:
-    #         # Discontinue if continuous limit is reached
-    #         loop_count += 1
-    #         if (
-    #             cfg.continuous_mode
-    #             and cfg.continuous_limit > 0
-    #             and loop_count > cfg.continuous_limit
-    #         ):
-    #             logger.typewriter_log(
-    #                 "Continuous Limit Reached: ", Fore.YELLOW, f"{cfg.continuous_limit}"
-    #             )
-    #             break
-    #         # Send message to AI, get response
-    #         with Spinner("Thinking... "):
-    #             assistant_reply = chat_with_ai(self,
-    #                                            self.system_prompt,
-    #                                            self.triggering_prompt,
-    #                                            self.full_message_history,
-    #                                            self.memory,
-    #                                            cfg.fast_token_limit,
-    #                                            )  # TODO: This hardcodes the model to use GPT3.5. Make this an argument
+                result_tlength = count_string_tokens(
+                    str(command_result), cfg.fast_llm_model
+                )
+                memory_tlength = count_string_tokens(
+                    str(self.summary_memory), cfg.fast_llm_model
+                )
+                if result_tlength + memory_tlength + 600 > cfg.fast_token_limit:
+                    result = f"Failure: command {command_name} returned too much output. \
+                        Do not execute this command again with the same arguments."
 
-    #         assistant_reply_json = fix_json_using_multiple_techniques(assistant_reply)
-    #         for plugin in cfg.plugins:
-    #             if not plugin.can_handle_post_planning():
-    #                 continue
-    #             assistant_reply_json = plugin.post_planning(self, assistant_reply_json)
+                for plugin in cfg.plugins:
+                    if not plugin.can_handle_post_command():
+                        continue
+                    result = plugin.post_command(command_name, result)
 
-    #         # Print Assistant thoughts
-    #         if assistant_reply_json != {}:
-    #             validate_json(assistant_reply_json, LLM_DEFAULT_RESPONSE_FORMAT)
-    #             # Get command name and arguments
-    #             try:
-    #                 print_assistant_thoughts(
-    #                     self.ai_name, assistant_reply_json, cfg.speak_mode
-    #                 )
-    #                 command_name, arguments = get_command(assistant_reply_json)
-    #                 if cfg.speak_mode:
-    #                     say_text(f"I want to execute {command_name}")
+            # Check if there's a result from the command append it to the message
+            # history
+            if result is not None:
+                self.full_message_history.append(create_chat_message("system", result))
+                logger.typewriter_log("SYSTEM: ", Fore.YELLOW, result)
+            else:
+                self.full_message_history.append(
+                    create_chat_message("system", "Unable to execute command")
+                )
+                logger.typewriter_log(
+                    "SYSTEM: ", Fore.YELLOW, "Unable to execute command"
+                )
+            print('FULL MESSAGE HISTORY\n')
+            print(self.full_message_history)
 
-    #                 arguments = self._resolve_pathlike_command_args(arguments)
-
-    #             except Exception as e:
-    #                 logger.error("Error: \n", str(e))
-
-    #         if not cfg.continuous_mode and self.next_action_count == 0:
-    #             # ### GET USER AUTHORIZATION TO EXECUTE COMMAND ###
-    #             # Get key press: Prompt the user to press enter to continue or escape
-    #             # to exit
-    #             self.user_input = ""
-    #             logger.typewriter_log(
-    #                 "NEXT ACTION: ",
-    #                 Fore.CYAN,
-    #                 f"COMMAND = {Fore.CYAN}{command_name}{Style.RESET_ALL}  "
-    #                 f"ARGUMENTS = {Fore.CYAN}{arguments}{Style.RESET_ALL}",
-    #             )
-
-    #             logger.info(
-    #                 "Enter 'y' to authorise command, 'y -N' to run N continuous commands, 's' to run self-feedback commands"
-    #                 "'n' to exit program, or enter feedback for "
-    #                 f"{self.ai_name}..."
-    #             )
-    #             while True:
-    #                 if cfg.chat_messages_enabled:
-    #                     console_input = clean_input("Waiting for your response...")
-    #                 else:
-    #                     console_input = clean_input(
-    #                         Fore.MAGENTA + "Input:" + Style.RESET_ALL
-    #                     )
-    #                 if console_input.lower().strip() == cfg.authorise_key:
-    #                     user_input = "GENERATE NEXT COMMAND JSON"
-    #                     break
-    #                 elif console_input.lower().strip() == "s":
-    #                     logger.typewriter_log(
-    #                         "-=-=-=-=-=-=-= THOUGHTS, REASONING, PLAN AND CRITICISM WILL NOW BE VERIFIED BY AGENT -=-=-=-=-=-=-=",
-    #                         Fore.GREEN,
-    #                         "",
-    #                     )
-    #                     thoughts = assistant_reply_json.get("thoughts", {})
-    #                     self_feedback_resp = self.get_self_feedback(
-    #                         thoughts, cfg.fast_llm_model
-    #                     )
-    #                     logger.typewriter_log(
-    #                         f"SELF FEEDBACK: {self_feedback_resp}",
-    #                         Fore.YELLOW,
-    #                         "",
-    #                     )
-    #                     if self_feedback_resp[0].lower().strip() == cfg.authorise_key:
-    #                         user_input = "GENERATE NEXT COMMAND JSON"
-    #                     else:
-    #                         user_input = self_feedback_resp
-    #                     break
-    #                 elif console_input.lower().strip() == "":
-    #                     logger.warn("Invalid input format.")
-    #                     continue
-    #                 elif console_input.lower().startswith(f"{cfg.authorise_key} -"):
-    #                     try:
-    #                         self.next_action_count = abs(
-    #                             int(console_input.split(" ")[1])
-    #                         )
-    #                         user_input = "GENERATE NEXT COMMAND JSON"
-    #                     except ValueError:
-    #                         logger.warn(
-    #                             "Invalid input format. Please enter 'y -n' where n is"
-    #                             " the number of continuous tasks."
-    #                         )
-    #                         continue
-    #                     break
-    #                 elif console_input.lower() == cfg.exit_key:
-    #                     user_input = "EXIT"
-    #                     break
-    #                 else:
-    #                     user_input = console_input
-    #                     command_name = "human_feedback"
-    #                     break
-
-    #             if user_input == "GENERATE NEXT COMMAND JSON":
-    #                 logger.typewriter_log(
-    #                     "-=-=-=-=-=-=-= COMMAND AUTHORISED BY USER -=-=-=-=-=-=-=",
-    #                     Fore.MAGENTA,
-    #                     "",
-    #                 )
-    #             elif user_input == "EXIT":
-    #                 logger.info("Exiting...")
-    #                 break
-    #         else:
-    #             # Print command
-    #             logger.typewriter_log(
-    #                 "NEXT ACTION: ",
-    #                 Fore.CYAN,
-    #                 f"COMMAND = {Fore.CYAN}{command_name}{Style.RESET_ALL}"
-    #                 f"  ARGUMENTS = {Fore.CYAN}{arguments}{Style.RESET_ALL}",
-    #             )
-
-    #         # Execute command
-    #         if command_name is not None and command_name.lower().startswith("error"):
-    #             result = (
-    #                 f"Command {command_name} threw the following error: {arguments}"
-    #             )
-    #         elif command_name == "human_feedback":
-    #             result = f"Human feedback: {user_input}"
-    #         else:
-    #             for plugin in cfg.plugins:
-    #                 if not plugin.can_handle_pre_command():
-    #                     continue
-    #                 command_name, arguments = plugin.pre_command(
-    #                     command_name, arguments
-    #                 )
-    #             command_result = execute_command(
-    #                 self.command_registry,
-    #                 command_name,
-    #                 arguments,
-    #                 self.config.prompt_generator,
-    #             )
-    #             result = f"Command {command_name} returned: " f"{command_result}"
-
-    #             result_tlength = count_string_tokens(
-    #                 str(command_result), cfg.fast_llm_model
-    #             )
-    #             memory_tlength = count_string_tokens(
-    #                 str(self.summary_memory), cfg.fast_llm_model
-    #             )
-    #             if result_tlength + memory_tlength + 600 > cfg.fast_token_limit:
-    #                 result = f"Failure: command {command_name} returned too much output. \
-    #                     Do not execute this command again with the same arguments."
-
-    #             for plugin in cfg.plugins:
-    #                 if not plugin.can_handle_post_command():
-    #                     continue
-    #                 result = plugin.post_command(command_name, result)
-    #             if self.next_action_count > 0:
-    #                 self.next_action_count -= 1
-
-    #         # Check if there's a result from the command append it to the message
-    #         # history
-    #         if result is not None:
-    #             self.full_message_history.append(create_chat_message("system", result))
-    #             logger.typewriter_log("SYSTEM: ", Fore.YELLOW, result)
-    #         else:
-    #             self.full_message_history.append(
-    #                 create_chat_message("system", "Unable to execute command")
-    #             )
-    #             logger.typewriter_log(
-    #                 "SYSTEM: ", Fore.YELLOW, "Unable to execute command"
-    #             )
+            if command_name == 'message_user':
+                return command_result
 
     def _resolve_pathlike_command_args(self, command_args):
         if "directory" in command_args and command_args["directory"] in {"", "/"}:
